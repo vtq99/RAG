@@ -1,3 +1,4 @@
+import re
 import os
 import pickle
 import math
@@ -5,13 +6,14 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from .utils import initialize_x_transform, initialize_y_transform, download_detection
+from .utils import initialize_transform, download_detection
 
 PREPROCESSED_FILE = 'echr.pkl'
-MAX_TOKEN_LENGTH = 128
+MAX_TOKEN_LENGTH = 1024
 RAW_DATA_FILE = 'echr_cases_total.pkl'
 ID_HELD_OUT = 0.2
 GROUP = 1
+
 
 class ECHRBase(Dataset):
     def __init__(self, args):
@@ -27,14 +29,14 @@ class ECHRBase(Dataset):
         self.datasets = pickle.load(open(os.path.join(args.data_dir, self.data_file), 'rb'))
 
         self.args = args
-        self.ENV = [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022]
+        self.ENV = [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015,
+                    2016, 2017, 2018, 2019, 2020, 2021, 2022]
         # self.num_classes = 14 # 15 if we remove classes
         self.num_tasks = len(self.ENV)
         self.current_time = 0
         self.mini_batch_size = args.mini_batch_size
         self.task_indices = {}
-        self.x_transform = initialize_x_transform(max_token_length=MAX_TOKEN_LENGTH)
-        self.y_transform = initialize_y_transform(max_token_length=MAX_TOKEN_LENGTH)
+        self.transform = initialize_transform(max_token_length=MAX_TOKEN_LENGTH)
         self.mode = 0
 
         # self.class_id_list = {i: {} for i in range(self.num_classes)}
@@ -87,9 +89,11 @@ class ECHRBase(Dataset):
         if idx >= K:
             last_K_num_samples = self.input_dim[idx - K]
             self.datasets[time][self.mode]['text'] = np.concatenate(
-                (self.datasets[time][self.mode]['text'], self.datasets[prev_time][self.mode]['text'][:-last_K_num_samples]), axis=0)
+                (self.datasets[time][self.mode]['text'],
+                 self.datasets[prev_time][self.mode]['text'][:-last_K_num_samples]), axis=0)
             self.datasets[time][self.mode]['labels'] = np.concatenate(
-                (self.datasets[time][self.mode]['labels'], self.datasets[prev_time][self.mode]['labels'][:-last_K_num_samples]), axis=0)
+                (self.datasets[time][self.mode]['labels'],
+                 self.datasets[prev_time][self.mode]['labels'][:-last_K_num_samples]), axis=0)
             del self.datasets[prev_time]
             # for classid in range(self.num_classes):
             #     sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'] == classid)[0]
@@ -127,10 +131,9 @@ class ECHR(ECHRBase):
             index = sel_idx
 
         headline = self.datasets[self.current_time][self.mode]['text'][index]
-        category = self.datasets[self.current_time][self.mode]['labels'][index]
 
-        x = self.x_transform(text=headline)
-        y = self.y_transform(text=category)
+        x = self.transform(text=headline)
+        y = None
 
         return x, y
 
@@ -169,9 +172,8 @@ class ECHRGroup(ECHRBase):
             # Pick an example in the time step
             sel_idx = np.random.choice(np.arange(start_idx, end_idx))
             headline = self.datasets[self.current_time][self.mode]['text'][sel_idx]
-            category = self.datasets[self.current_time][self.mode]['labels'][sel_idx]
-            x = self.x_transform(text=headline)
-            y = self.y_transform(text=category)
+            x = self.transform(text=headline)
+            y = None
             group_tensor = torch.LongTensor([groupid])
 
             del groupid
@@ -185,10 +187,9 @@ class ECHRGroup(ECHRBase):
 
         else:
             headline = self.datasets[self.current_time][self.mode]['text'][index]
-            category = self.datasets[self.current_time][self.mode]['labels'][index]
 
-            x = self.x_transform(text=headline)
-            y = self.y_transform(text=category)
+            x = self.transform(text=headline)
+            y = None
 
             return x, y
 
@@ -229,12 +230,12 @@ def preprocess_orig(args):
         years.append(all_years[32])
         all_dfs = all_dfs[33:]
         all_years = all_years[33:]
-        for i in range(math.ceil(len(all_years)/GROUP)):
+        for i in range(math.ceil(len(all_years) / GROUP)):
             try:
-                dfs.append(pd.concat(all_dfs[GROUP*i:GROUP*i+GROUP]))
-                years.append(all_years[GROUP*i + 1])
+                dfs.append(pd.concat(all_dfs[GROUP * i:GROUP * i + GROUP]))
+                years.append(all_years[GROUP * i + 1])
             except:
-                dfs.append(pd.concat(all_dfs[GROUP*i:]))
+                dfs.append(pd.concat(all_dfs[GROUP * i:]))
                 years.append(all_years[-1])
     else:
         dfs = [pd.concat(all_dfs[:33])] + all_dfs[33:]
@@ -252,32 +253,27 @@ def preprocess_orig(args):
         # Store news headlines and category labels
         dataset[year] = {}
         df_year = dfs[i - 1]
-        headlines = df_year['PCR_FACTS'].tolist()
-        categories = df_year['PCR_REMAINDER_REMAINDER'].tolist()
-
-        headlines_train = pd.Series(headlines)
-        categories_train = pd.Series(categories)
+        df_year['PCR_REMAINDER_REMAINDER_CLEANED'] = df_year['PCR_REMAINDER_REMAINDER'].apply(clean_sentences)
+        samples = []
+        for idx in df_year.index:
+            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx])
+            samples += sample
+        samples_train = pd.Series(samples)
 
         df_year = dfs[i]
-        headlines = df_year['PCR_FACTS'].tolist()
-        categories = df_year['PCR_REMAINDER_REMAINDER'].tolist()
-
-        headlines_val = pd.Series(headlines)
-        categories_val = pd.Series(categories)
-
-        seed_ = np.random.get_state()
-        np.random.seed(0)
-        np.random.set_state(seed_)
+        df_year['PCR_REMAINDER_REMAINDER_CLEANED'] = df_year['PCR_REMAINDER_REMAINDER'].apply(clean_sentences)
+        samples = []
+        for idx in df_year.index:
+            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx])
+            samples += sample
+        samples_val = pd.Series(samples)
 
         dataset[year][0] = {}
-        dataset[year][0]['text'] = headlines_train.to_numpy()
-        dataset[year][0]['labels'] = categories_train.to_numpy()
+        dataset[year][0]['text'] = samples_train.to_numpy()
         dataset[year][1] = {}
-        dataset[year][1]['text'] = headlines_val.to_numpy()
-        dataset[year][1]['labels'] = categories_val.to_numpy()
+        dataset[year][1]['text'] = samples_val.to_numpy()
         dataset[year][2] = {}
-        dataset[year][2]['text'] = headlines_val.to_numpy()
-        dataset[year][2]['labels'] = categories_val.to_numpy()
+        dataset[year][2]['text'] = samples_val.to_numpy()
 
     preprocessed_data_path = os.path.join(args.data_dir, PREPROCESSED_FILE)
     pickle.dump(dataset, open(preprocessed_data_path, 'wb'))
@@ -289,3 +285,78 @@ def preprocess(args):
         preprocess_orig(args)
     np.random.seed(args.random_seed)
 
+
+def remote_between_parenthesis(input_text: str):
+    result = re.sub(r'\([^)]*\)', '', input_text)
+    return result
+
+
+def clean_sentences(sentences):
+    return [remote_between_parenthesis(x) for x in sentences]
+
+
+def divide_chunks(fact, law, stride=1024):
+    result = []
+    chunk = []
+    cur_len = 0
+    max_len = 512
+
+    # Max facts = 512 tokens
+    for paragraph in reversed(fact):
+        words_no = len(paragraph.split())
+        # Add the sample as a list if it is longer than MAX_SEQ_LEN
+        if words_no >= max_len and len(chunk) == 0:
+            chunk.append(' '. join(paragraph.split()[-max_len:]))
+            break
+        if cur_len + words_no >= max_len:
+            # The next paragraph does not fit
+            chunk = [paragraph] + chunk
+            break
+        else:
+            # Add the sample to sequence, continue and try to add more
+            chunk = [paragraph] + chunk
+            cur_len += words_no
+            continue
+    # Concat fact and law sections
+    law = chunk + law
+    cur_len = 0
+    max_len = 1024
+
+    for idx, p in enumerate(law):
+        words_no = len(p.split())
+        # Add the sample as a list if it is longer than MAX_SEQ_LEN
+        if idx == 0:
+            start = 0
+        elif (words_no >= stride) or (cur_len + words_no >= stride):
+            start = idx - 1
+            pass
+        else:
+            cur_len += words_no
+            continue
+
+        chunk = []
+        cur_len = 0
+        for paragraph in law[start:]:
+            words_no = len(paragraph.split())
+            # Add the sample as a list if it is longer than MAX_SEQ_LEN
+            if words_no >= max_len:
+                result.append(chunk)
+                result.append([paragraph])
+                chunk = []
+                cur_len = 0
+                break
+            if cur_len + words_no >= max_len:
+                # The next paragraph does not fit in = start for next sequence
+                result.append(chunk)
+                chunk = []
+                cur_len = 0
+                break
+            else:
+                # Add the sample to sequence, continue and try to add more
+                chunk.append(paragraph)
+                cur_len += words_no
+                continue
+        if len(chunk) > 0:
+            result.append(chunk)
+        cur_len = 0
+    return result

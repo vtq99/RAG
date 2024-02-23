@@ -8,31 +8,31 @@ from transformers import AutoTokenizer, GPT2Tokenizer
 from datasets import load_dataset
 
 
-def initialize_x_transform(max_token_length):
+def initialize_transform(max_token_length):
     """Adapted from the Wilds library, available at: https://github.com/p-lambda/wilds"""
     x_tokenizer = AutoTokenizer.from_pretrained('gpt2-medium')
-    x_tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
-    x_tokenizer.padding_size = 'left'
-    x_tokenizer.truncation_side = 'left'
-    def x_transform(text):
+    x_tokenizer.pad_token = x_tokenizer.eos_token
+    # x_tokenizer.padding_side = 'left'
+    # x_tokenizer.truncation_side = 'left'
+    def transform(text):
         tokens = x_tokenizer(
             ' '.join(text),
             padding='max_length',
-            truncation=True,
-            max_length=1024,
+            # truncation=True,
+            max_length=max_token_length,
             return_tensors='pt'
         )
         x = torch.stack((tokens['input_ids'], tokens['attention_mask']), dim=2)
         x = torch.squeeze(x, dim=0)  # First shape dim is always 1
         return x
 
-    return x_transform
+    return transform
 
 
 def initialize_y_transform(max_token_length):
     """Adapted from the Wilds library, available at: https://github.com/p-lambda/wilds"""
     y_tokenizer = AutoTokenizer.from_pretrained('gpt2-medium')
-    y_tokenizer.add_special_tokens({'pad_token': '<|pad|>'})
+    y_tokenizer.pad_token = y_tokenizer.eos_token
 
     def y_transform(text):
         tokens = y_tokenizer(

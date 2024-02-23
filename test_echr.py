@@ -1,29 +1,29 @@
 config = {
     'dataset': 'echr', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
     'method': 'erm', # choices=['er', 'coral', 'ensemble', 'ewc', 'ft', 'groupdro', 'irm', 'si', 'erm', 'simclr', 'swav', 'swa']
-    'device': 3,  # 'gpu id'
+    'device': 2,  # 'gpu id'
     'random_seed': 1,  # 'random seed number'
 
     'eval_fix': False,
 
     # Training hyperparameters
     'stride': 512,
-    'train_update_iter': 5,  # 'train update iter'
+    'train_update_iter': 116000,  # 'train update iter'
     'lr': 2e-05,  # 'the base learning rate of the generator'
     'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.01,  # 'weight decay
-    'mini_batch_size': 1,  # 'mini batch size for SGD'
+    'mini_batch_size': 2,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
     'reduction': 'mean',
-    'eval_freq': 1,
+    'eval_freq': 5800,
     'patience': 3,
 
     # Evaluation
     'offline': False,  # help='evaluate offline at a single time step split'
     'difficulty': False,  # 'task difficulty'
     # todo: set value of split_time
-    'split_time': 2016,  # 'timestep to split ID vs OOD'
-    'test_time': 2016,
+    'split_time': 2017,  # 'timestep to split ID vs OOD'
+    'test_time': 2019,
     'eval_next_timestamps': 1,  # 'number of future timesteps to evaluate on'
     'eval_worst_time': False,  # 'evaluate worst timestep accuracy'
     'load_model': False,  # 'load trained model for evaluation only'

@@ -4,15 +4,15 @@ from scipy.stats import sem
 from torch.autograd import Variable
 
 
-def prepare_data(x, y):
-    x = torch.cat((x, y), -2)
-    return x.cuda(), y.cuda()
+def prepare_data(x):
+    # x = torch.cat((x, y), -2)
+    return x.cuda()
 
 
-def forward_pass(x, y, network):
-    logits = network(x, labels=y)
+def forward_pass(x, network):
+    logits = network(x, labels=x)
     loss = logits[0]
-    return loss, logits, y
+    return loss, logits
 
 
 def split_into_groups(g):
@@ -43,21 +43,6 @@ def get_collate_functions(args, train_dataset):
     if 'echr' in args.dataset:
         train_collate_fn = collate_fn
         eval_collate_fn = collate_fn
-    # elif args.method == 'simclr':
-    #     if args.dataset == 'yearbook':
-    #         train_collate_fn = SimCLRCollateFunction(
-    #             input_size=train_dataset.resolution,
-    #             vf_prob=0.5,
-    #             rr_prob=0.5
-    #         )
-    #     else:
-    #         train_collate_fn = SimCLRCollateFunction(
-    #             input_size=train_dataset.resolution
-    #         )
-    #     eval_collate_fn = None
-    # elif args.method == 'swav':
-    #     train_collate_fn = SwaVCollateFunction()
-    #     eval_collate_fn = None
     # else:
     #     train_collate_fn = None
     #     eval_collate_fn = None

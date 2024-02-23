@@ -32,6 +32,7 @@ class BaseTrainer:
         self.args = args
         self.train_update_iter = args.train_update_iter
         self.stride = args.stride
+        self.max_length = self.network.model.config.n_positions
         self.mini_batch_size = args.mini_batch_size
         self.num_workers = args.num_workers
         self.base_trainer_str = self.get_base_trainer_str()
@@ -69,42 +70,19 @@ class BaseTrainer:
     def train_step(self, dataloader, timestamp):
         self.network.train()
         loss_all = []
-        max_length = self.network.model.config.n_positions
-
-        for step, (x, y) in enumerate(dataloader):
+        for step, (x, _) in enumerate(dataloader):
             if self.current_patience == 0:
                 print('Stopped at step ' + str(step-1))
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break
             x = torch.stack(x)
-            y = torch.stack(y)
-            x, y = prepare_data(x, y)
-            if step > 0:
-                print('Sus')
-
-            prev_end_loc = 0
-            seq_len = x.shape[1]
-            for begin_loc in range(0, seq_len, self.stride):
-                if begin_loc + max_length > seq_len:
-                    break
-                end_loc = min(begin_loc + max_length, seq_len)
-                trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
-                context = x[:, begin_loc:end_loc, :]
-                target = context.clone()
-                target[:, :-trg_len:] = -100
-                logit = self.network(context, labels=target)
-                loss = logit.loss
-                print(begin_loc, end_loc, loss)
-
-                loss_all.append(loss.item())
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
-
-                prev_end_loc = end_loc
-                if end_loc == seq_len:
-                    break
+            x = prepare_data(x)
+            logit, loss = forward_pass(x, self.network)
+            loss_all.append(loss.item())
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
 
             # EVAL
             if step % self.eval_freq == 0 and step > 0:
@@ -118,33 +96,17 @@ class BaseTrainer:
                                                       num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 for _, sample in enumerate(test_time_dataloader):
                     if len(sample) == 3:
-                        x_val, y_val, _ = sample
+                        x, _, _ = sample
                     else:
-                        x_val, y_val = sample
-                    x_val = torch.stack(x_val)
-                    y_val = torch.stack(y_val)
-                    x_val, y_val = prepare_data(x_val, y_val)
-
-                    prev_end_loc = 0
-                    seq_len = x_val.shape[1]
-                    for begin_loc in range(0, seq_len, self.stride):
-                        if begin_loc + max_length > seq_len:
-                            break
-                        end_loc = min(begin_loc + max_length, seq_len)
-                        trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
-                        context = x_val[:, begin_loc:end_loc, :]
-                        target = context.clone()
-                        target[:, :-trg_len:] = -100
-                        with torch.no_grad():
-                            logit_val = self.network(context, labels=target)
-                            val_loss_all.append(logit_val.loss.item())
-
-                        prev_end_loc = end_loc
-                        if end_loc == seq_len:
-                            break
-                    break
+                        x, _ = sample
+                    x = torch.stack(x)
+                    x = prepare_data(x)
+                    with torch.no_grad():
+                        logit, loss = forward_pass(x, self.network)
+                        val_loss_all.append(loss.item())
 
                 val_loss = np.mean(val_loss_all)
+                # print(f'Val loss epoch {step/5800}: {val_loss}')
                 self.eval_dataset.mode = 2
                 self.network.train()
 
@@ -241,7 +203,7 @@ class BaseTrainer:
                 trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
                 context = x[:, begin_loc:end_loc, :]
                 target = context.clone()
-                target[:, :-trg_len:] = -100
+                # target[:, :-trg_len, :] = -100
                 with torch.no_grad():
                     logit = self.network(context, labels=target)
                     loss = logit.loss
