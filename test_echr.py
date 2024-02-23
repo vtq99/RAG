@@ -1,18 +1,18 @@
 config = {
     'dataset': 'echr', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
     'method': 'erm', # choices=['er', 'coral', 'ensemble', 'ewc', 'ft', 'groupdro', 'irm', 'si', 'erm', 'simclr', 'swav', 'swa']
-    'device': 2,  # 'gpu id'
+    'device': 0,  # 'gpu id'
     'random_seed': 1,  # 'random seed number'
 
-    'eval_fix': False,
+    'eval_fix': True,
 
     # Training hyperparameters
     'stride': 512,
-    'train_update_iter': 116000,  # 'train update iter'
+    'train_update_iter': 0, # 116000,  # 'train update iter'
     'lr': 2e-05,  # 'the base learning rate of the generator'
     'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.01,  # 'weight decay
-    'mini_batch_size': 2,  # 'mini batch size for SGD'
+    'mini_batch_size': 4,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
     'reduction': 'mean',
     'eval_freq': 5800,

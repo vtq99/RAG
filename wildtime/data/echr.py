@@ -46,7 +46,7 @@ class ECHRBase(Dataset):
         cumulative_batch_size = 0
         for i, year in enumerate(self.ENV):
             # Store task indices
-            end_idx = start_idx + len(self.datasets[year][self.mode]['labels'])
+            end_idx = start_idx + len(self.datasets[year][self.mode]['text'])
             self.task_idxs[year] = [start_idx, end_idx]
             start_idx = end_idx
 
@@ -57,7 +57,7 @@ class ECHRBase(Dataset):
             print(f'Year {str(year)} loaded')
 
             # Store input dim
-            num_examples = len(self.datasets[year][self.mode]['labels'])
+            num_examples = len(self.datasets[year][self.mode]['text'])
             cumulative_batch_size += min(self.mini_batch_size, num_examples)
             if args.method in ['erm']:
                 self.input_dim.append(cumulative_batch_size)
@@ -74,8 +74,8 @@ class ECHRBase(Dataset):
         prev_time = self.ENV[idx - 1]
         self.datasets[time][self.mode]['text'] = np.concatenate(
             (self.datasets[time][self.mode]['text'], self.datasets[prev_time][self.mode]['text']), axis=0)
-        self.datasets[time][self.mode]['labels'] = np.concatenate(
-            (self.datasets[time][self.mode]['labels'], self.datasets[prev_time][self.mode]['labels']), axis=0)
+        # self.datasets[time][self.mode]['labels'] = np.concatenate(
+        #     (self.datasets[time][self.mode]['labels'], self.datasets[prev_time][self.mode]['labels']), axis=0)
         if data_del:
             del self.datasets[prev_time]
         # for classid in range(self.num_classes):
@@ -91,9 +91,9 @@ class ECHRBase(Dataset):
             self.datasets[time][self.mode]['text'] = np.concatenate(
                 (self.datasets[time][self.mode]['text'],
                  self.datasets[prev_time][self.mode]['text'][:-last_K_num_samples]), axis=0)
-            self.datasets[time][self.mode]['labels'] = np.concatenate(
-                (self.datasets[time][self.mode]['labels'],
-                 self.datasets[prev_time][self.mode]['labels'][:-last_K_num_samples]), axis=0)
+            # self.datasets[time][self.mode]['labels'] = np.concatenate(
+            #     (self.datasets[time][self.mode]['labels'],
+            #      self.datasets[prev_time][self.mode]['labels'][:-last_K_num_samples]), axis=0)
             del self.datasets[prev_time]
             # for classid in range(self.num_classes):
             #     sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'] == classid)[0]
@@ -138,7 +138,7 @@ class ECHR(ECHRBase):
         return x, y
 
     def __len__(self):
-        return len(self.datasets[self.current_time][self.mode]['labels'])
+        return len(self.datasets[self.current_time][self.mode]['text'])
 
 
 class ECHRGroup(ECHRBase):
@@ -198,7 +198,7 @@ class ECHRGroup(ECHRBase):
         return torch.LongTensor([1 for _ in range(min(self.num_groups, idx + 1))])
 
     def __len__(self):
-        return len(self.datasets[self.current_time][self.mode]['labels'])
+        return len(self.datasets[self.current_time][self.mode]['text'])
 
 
 """

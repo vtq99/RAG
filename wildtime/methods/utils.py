@@ -11,8 +11,8 @@ def prepare_data(x):
 
 def forward_pass(x, network):
     logits = network(x, labels=x)
-    loss = logits[0]
-    return loss, logits
+    loss = logits.loss
+    return logits, loss
 
 
 def split_into_groups(g):

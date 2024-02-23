@@ -106,7 +106,7 @@ class BaseTrainer:
                         val_loss_all.append(loss.item())
 
                 val_loss = np.mean(val_loss_all)
-                # print(f'Val loss epoch {step/5800}: {val_loss}')
+                print(f'Val loss epoch {step/5800}: {val_loss}')
                 self.eval_dataset.mode = 2
                 self.network.train()
 
@@ -184,36 +184,16 @@ class BaseTrainer:
     def network_evaluation(self, test_time_dataloader):
         self.network.eval()
         loss_all = []
-        max_length = self.network.model.config.n_positions
         for _, sample in enumerate(test_time_dataloader):
             if len(sample) == 3:
-                x, y, _ = sample
+                x, _, _ = sample
             else:
-                x, y = sample
+                x, _ = sample
             x = torch.stack(x)
-            y = torch.stack(y)
-            x, y = prepare_data(x, y)
-
-            prev_end_loc = 0
-            seq_len = x.shape[1]
-            for begin_loc in range(0, seq_len, self.stride):
-                if begin_loc + max_length > seq_len:
-                    break
-                end_loc = min(begin_loc + max_length, seq_len)
-                trg_len = end_loc - prev_end_loc  # may be different from stride on last loop
-                context = x[:, begin_loc:end_loc, :]
-                target = context.clone()
-                # target[:, :-trg_len, :] = -100
-                with torch.no_grad():
-                    logit = self.network(context, labels=target)
-                    loss = logit.loss
-
+            x = prepare_data(x)
+            with torch.no_grad():
+                logit, loss = forward_pass(x, self.network)
                 loss_all.append(loss.item())
-
-                prev_end_loc = end_loc
-                if end_loc == seq_len:
-                    break
-            break
 
         loss = torch.stack(loss_all)
         avg_loss = loss.mean()

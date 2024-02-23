@@ -10,15 +10,15 @@ from datasets import load_dataset
 
 def initialize_transform(max_token_length):
     """Adapted from the Wilds library, available at: https://github.com/p-lambda/wilds"""
-    x_tokenizer = AutoTokenizer.from_pretrained('gpt2-medium')
-    x_tokenizer.pad_token = x_tokenizer.eos_token
+    tokenizer = AutoTokenizer.from_pretrained('gpt2-medium')
+    tokenizer.pad_token = tokenizer.eos_token
     # x_tokenizer.padding_side = 'left'
     # x_tokenizer.truncation_side = 'left'
     def transform(text):
-        tokens = x_tokenizer(
+        tokens = tokenizer(
             ' '.join(text),
             padding='max_length',
-            # truncation=True,
+            truncation=True,
             max_length=max_token_length,
             return_tensors='pt'
         )
