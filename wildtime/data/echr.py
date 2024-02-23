@@ -256,7 +256,7 @@ def preprocess_orig(args):
         df_year['PCR_REMAINDER_REMAINDER_CLEANED'] = df_year['PCR_REMAINDER_REMAINDER'].apply(clean_sentences)
         samples = []
         for idx in df_year.index:
-            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx])
+            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx], args.stride)
             samples += sample
         samples_train = pd.Series(samples)
 
@@ -264,7 +264,7 @@ def preprocess_orig(args):
         df_year['PCR_REMAINDER_REMAINDER_CLEANED'] = df_year['PCR_REMAINDER_REMAINDER'].apply(clean_sentences)
         samples = []
         for idx in df_year.index:
-            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx])
+            sample = divide_chunks(df_year['PCR_FACTS'][idx], df_year['PCR_REMAINDER_REMAINDER_CLEANED'][idx], args.stride)
             samples += sample
         samples_val = pd.Series(samples)
 

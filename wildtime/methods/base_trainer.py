@@ -106,7 +106,7 @@ class BaseTrainer:
                         val_loss_all.append(loss.item())
 
                 val_loss = np.mean(val_loss_all)
-                print(f'Val loss epoch {step/5800}: {val_loss}')
+                print(f'Val loss epoch {step/self.eval_freq}: {val_loss}')
                 self.eval_dataset.mode = 2
                 self.network.train()
 
@@ -195,7 +195,7 @@ class BaseTrainer:
                 logit, loss = forward_pass(x, self.network)
                 loss_all.append(loss.item())
 
-        loss = torch.stack(loss_all)
+        loss = torch.tensor(loss_all)
         avg_loss = loss.mean()
         ppl = torch.exp(avg_loss)
         metric = (ppl, avg_loss)
@@ -264,7 +264,7 @@ class BaseTrainer:
               f'\nWorst Metric Across All Timestamps: \t{np.min(metric_all, axis=0)}'
               f'\nMetrics Across All Timestamps: \t{metric_all}')
 
-        loss = torch.stack(loss_all).mean()
+        loss = torch.tensor(loss_all).mean()
         ppl = torch.exp(loss)
         print(f'\nMetric Across All Timestamps: \t{[ppl, loss]}')
 
@@ -301,7 +301,7 @@ class BaseTrainer:
               f'\nOOD Worst Metric: \t{np.min(metric_all, axis=0)}'
               f'\nAll OOD Metrics: \t{metric_all}')
 
-        loss = torch.stack(loss_all).mean()
+        loss = torch.tensor(loss_all).mean()
         ppl = torch.exp(loss)
         print(f'\nMetric Across All Timestamps: \t{[ppl, loss]}')
 
@@ -331,7 +331,7 @@ class BaseTrainer:
               f'\nWorst Metric Across All Timestamps: \t{np.min(metric_all, axis=0)}'
               f'\nMetrics Across All Timestamps: \t{metric_all}')
 
-        loss = torch.stack(loss_all).mean()
+        loss = torch.tensor(loss_all).mean()
         ppl = torch.exp(loss)
         print(f'\nMetric Across All Timestamps: \t{[ppl, loss]}')
 

@@ -8,14 +8,14 @@ config = {
 
     # Training hyperparameters
     'stride': 512,
-    'train_update_iter': 0, # 116000,  # 'train update iter'
+    'train_update_iter': 440800,  # 'train update iter'
     'lr': 2e-05,  # 'the base learning rate of the generator'
     'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.01,  # 'weight decay
     'mini_batch_size': 4,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
     'reduction': 'mean',
-    'eval_freq': 5800,
+    'eval_freq': 22040,
     'patience': 3,
 
     # Evaluation
